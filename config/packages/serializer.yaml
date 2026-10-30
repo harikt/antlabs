@@ -1,0 +1,4 @@
+framework:
+    serializer:
+        # JSON uses snake_case (due_date, created_at) while PHP properties stay camelCase
+        name_converter: 'serializer.name_converter.camel_case_to_snake_case'

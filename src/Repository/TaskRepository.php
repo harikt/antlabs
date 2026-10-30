@@ -17,35 +17,26 @@ class TaskRepository extends ServiceEntityRepository
         parent::__construct($registry, Task::class);
     }
 
-   /**
-    * @return Task[] Returns an array of Task objects
-    */
-   public function findAllTasks(Status $status, ?string $due_before = null)
-   {
-       $query = $this->createQueryBuilder('t')
-           ->andWhere('t.status = :status')
-           ->setParameter('status', $status);
+    /**
+     * @return Task[]
+     */
+    public function findByFilters(?Status $status = null, ?\DateTimeImmutable $dueBefore = null): array
+    {
+        $qb = $this->createQueryBuilder('t');
 
-        if ($due_before) {
-            $query->andWhere('t.due_date < :due_date')
-                ->setParameter('due_date', $due_before);
+        if (null !== $status) {
+            $qb->andWhere('t.status = :status')
+                ->setParameter('status', $status);
         }
 
-        return $query->orderBy('t.due_date', 'ASC')
-           ->orderBy('t.created_at', 'DESC')
-           ->setMaxResults(10)
-           ->getQuery()
-           ->getResult()
-       ;
-   }
+        if (null !== $dueBefore) {
+            $qb->andWhere('t.dueDate < :dueBefore')
+                ->setParameter('dueBefore', $dueBefore->setTimezone(new \DateTimeZone('UTC')));
+        }
 
-//    public function findOneBySomeField($value): ?Task
-//    {
-//        return $this->createQueryBuilder('t')
-//            ->andWhere('t.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+        return $qb->orderBy('t.dueDate', 'ASC')
+            ->addOrderBy('t.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

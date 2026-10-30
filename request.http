@@ -1,1 +1,14 @@
-curl -H https://localhost:8001/api/tasks
+### Create task
+POST https://127.0.0.1:8000/api/tasks
+Content-Type: application/json
+
+{"title": "Prepare demo", "status": "in_progress", "due_date": "2026-12-01T10:00:00+05:30"}
+
+### List tasks
+GET https://127.0.0.1:8000/api/tasks?status=todo&due_before=2027-01-01T00:00:00Z
+
+### Update status
+PATCH https://127.0.0.1:8000/api/tasks/1/status
+Content-Type: application/json
+
+{"status": "done"}

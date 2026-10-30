@@ -4,11 +4,12 @@ namespace App\Entity;
 
 use App\Enum\Status;
 use App\Repository\TaskRepository;
-use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TaskRepository::class)]
+#[ORM\Table(name: 'tasks')]
+#[ORM\Index(name: 'idx_tasks_status_due_date', columns: ['status', 'due_date'])]
 class Task
 {
     #[ORM\Id]
@@ -16,41 +17,39 @@ class Task
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    #[Assert\Length(min: 3,)]
-
-    private ?string $title = null;
+    #[ORM\Column(length: 150)]
+    private string $title;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?\DateTime $due_date = null;
+    #[ORM\Column(length: 20, enumType: Status::class, options: ['default' => 'todo'])]
+    private Status $status = Status::Todo;
 
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $created_at = null;
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $dueDate = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
+    private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(enumType: Status::class)]
-    private ?Status $status = Status::Todo;
+    #[ORM\Column]
+    private \DateTimeImmutable $updatedAt;
+
+    public function __construct(string $title)
+    {
+        $this->title = $title;
+        $this->createdAt = new \DateTimeImmutable();
+        $this->updatedAt = $this->createdAt;
+    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getTitle(): ?string
+    public function getTitle(): string
     {
         return $this->title;
-    }
-
-    public function setTitle(string $title): static
-    {
-        $this->title = $title;
-
-        return $this;
     }
 
     public function getDescription(): ?string
@@ -65,43 +64,7 @@ class Task
         return $this;
     }
 
-    public function getDueDate(): ?\DateTime
-    {
-        return $this->due_date;
-    }
-
-    public function setDueDate(?\DateTime $due_date): static
-    {
-        $this->due_date = $due_date;
-
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(?\DateTimeImmutable $created_at): static
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
-    public function getStatus(): ?Status
+    public function getStatus(): Status
     {
         return $this->status;
     }
@@ -109,7 +72,31 @@ class Task
     public function setStatus(Status $status): static
     {
         $this->status = $status;
+        $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function getDueDate(): ?\DateTimeImmutable
+    {
+        return $this->dueDate;
+    }
+
+    public function setDueDate(?\DateTimeImmutable $dueDate): static
+    {
+        // DATETIME columns drop the offset, so always store UTC
+        $this->dueDate = $dueDate?->setTimezone(new \DateTimeZone('UTC'));
+
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
     }
 }

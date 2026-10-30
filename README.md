@@ -1,43 +1,103 @@
-Build a mini API for Task Management.
-Requirements
-Create MySQL table tasks:
-id (PK, auto increment)
-title (varchar 150, required)
-description (text, nullable)
-status (enum/string: todo, in_progress, done; default todo)
-due_date (datetime, nullable)
-created_at (datetime, required)
-updated_at (datetime, required)
-Implement with Symfony + Doctrine:
-Entity + Migration
-Repository method(s) for filtering
-Endpoints:
-POST /api/tasks
-Input: title, description?, status?, due_date?
-Validate:
-title required, min 3 chars
-status must be one of allowed values
-due_date must be future datetime if provided
-Return 201 with created task JSON
-GET /api/tasks?status=&due_before=
-Filters optional
-Sort by due_date ASC, then created_at DESC
-Return list JSON
-PATCH /api/tasks/{id}/status
-Input: status
-Update only status + updated_at
-Return 200 updated object, 404 if not found, 422 invalid status
-Error handling
-Consistent JSON error format: { "errors": { "field": ["message"] } }
-Code quality expectations
-Thin controllers
-Use service layer for business logic
-Use DTO or request model for validation (bonus)
-No raw SQL in controllers
-Deliverables
-Source code
-Migration file
-Short README:
-setup steps
-run commands
-3 example curl requests
+# Task Management API
+
+Mini JSON API built with Symfony 7.4 + Doctrine ORM 3 on MySQL.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/tasks` | Create a task → `201` |
+| `GET` | `/api/tasks?status=&due_before=` | List tasks (filters optional), sorted by `due_date ASC, created_at DESC` |
+| `PATCH` | `/api/tasks/{id}/status` | Change status → `200`, `404` unknown id, `422` invalid status |
+
+Errors always look like `{ "errors": { "field": ["message"] } }`.
+
+## Setup
+
+Requirements: PHP 8.2+, Composer, MySQL 8+.
+
+```bash
+composer install
+
+# Point Doctrine at your MySQL (this file is git-ignored)
+echo 'DATABASE_URL="mysql://root:password@127.0.0.1:3306/antlabs?serverVersion=8.0.32&charset=utf8mb4"' > .env.local
+
+php bin/console doctrine:database:create --if-not-exists
+php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+## Run
+
+```bash
+symfony server:start -d          # or: php -S 127.0.0.1:8000 -t public
+```
+
+Tests (uses a separate `<dbname>_test` database):
+
+```bash
+cp .env.local .env.test.local
+php bin/console doctrine:database:create --env=test --if-not-exists
+php bin/console doctrine:schema:create --env=test
+php bin/phpunit
+```
+
+## Example requests
+
+`symfony server:start` serves **HTTPS** and answers `http://` with a `307` redirect, so always use `https://`.
+macOS `/usr/bin/curl` trusts the Symfony CA from the Keychain (`symfony server:ca:install`).
+A Homebrew/OpenSSL curl does not, and fails with `SSL certificate problem`. For that one, pass the CA explicitly:
+
+```bash
+export CURL_CA_BUNDLE="$HOME/Library/Application Support/symfony-cli/certs/rootCA.pem"
+```
+
+Create a task:
+
+```bash
+curl -i -X POST https://127.0.0.1:8000/api/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Prepare demo","description":"Captive portal walkthrough","status":"in_progress","due_date":"2026-12-01T10:00:00+05:30"}'
+```
+
+List todo tasks due before a date:
+
+```bash
+curl -i 'https://127.0.0.1:8000/api/tasks?status=todo&due_before=2027-01-01T00:00:00Z'
+```
+
+Update status:
+
+```bash
+curl -i -X PATCH https://127.0.0.1:8000/api/tasks/1/status \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"done"}'
+```
+
+Validation error example (`422`):
+
+```json
+{
+  "errors": {
+    "title": ["This value is too short. It should have 3 characters or more."],
+    "status": ["Status must be one of: todo, in_progress, done."],
+    "due_date": ["Due date must be in the future."]
+  }
+}
+```
+
+## Design
+
+```
+Controller (thin: map request → call service → return JSON)
+  ├─ DTOs + #[MapRequestPayload]/#[MapQueryString]  validation
+  ├─ TaskService                                    business logic
+  │    └─ TaskRepository::findByFilters()           QueryBuilder, no raw SQL
+  └─ ApiExceptionListener                           one JSON error format
+```
+
+- `src/Entity/Task.php` – `tasks` table; `Status` is a PHP backed enum.
+- `src/Dto/*` – `CreateTaskRequest`, `UpdateTaskStatusRequest`, `TaskFilter`.
+- `src/Service/TaskService.php` – create / list / changeStatus.
+- `src/EventListener/ApiExceptionListener.php` – maps validation (422), not found (404) and other HTTP errors to JSON.
+- `src/Migrations/Version20261030143205.php` – creates the `tasks` table.
+- JSON keys are snake_case via the serializer's `camel_case_to_snake_case` name converter (`config/packages/serializer.yaml`).
+- Dates are stored in UTC and returned as RFC 3339.
+- MySQL sorts `NULL` first in `ASC`, so tasks without a `due_date` appear at the top of the list.

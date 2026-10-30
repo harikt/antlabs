@@ -2,91 +2,41 @@
 
 namespace App\Controller;
 
-use App\Dto\TaskDto;
+use App\Dto\CreateTaskRequest;
+use App\Dto\TaskFilter;
+use App\Dto\UpdateTaskStatusRequest;
 use App\Entity\Task;
 use App\Enum\Status;
-use App\Form\TaskType;
-use App\Repository\TaskRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\TaskService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api/tasks')]
+#[Route('/api/tasks', format: 'json')]
 final class TaskController extends AbstractController
 {
-    #[Route(name: 'app_task_index', methods: ['GET'])]
-    public function index(TaskRepository $taskRepository): Response
+    public function __construct(private readonly TaskService $taskService)
     {
-        return $this->json(['tasks' => $taskRepository->findAllTasks(Status::Todo)]);
     }
 
-    #[Route(name: 'app_task_new', methods: ['POST'])]
-    public function new(
-        #[MapRequestPayload] TaskDto $taskDto
-        #[MapRequestPayload] TaskInput $input,
-        , EntityManagerInterface $entityManager): Response
+    #[Route('', name: 'api_task_list', methods: ['GET'])]
+    public function list(#[MapQueryString] TaskFilter $filter = new TaskFilter()): JsonResponse
     {
-        dump($taskDto);
-//         $task = new Task();
-//
-//         $entityManager->persist($task);
-//         $entityManager->flush();
-//
-//      $task = 'test';
-        return $this->json(['task' => $task]);
+        return $this->json($this->taskService->list($filter));
     }
 
-    #[Route('/{id}', name: 'app_task_show', methods: ['GET'])]
-    public function show(Task $task): Response
+    #[Route('', name: 'api_task_create', methods: ['POST'])]
+    public function create(#[MapRequestPayload] CreateTaskRequest $request): JsonResponse
     {
-        return $this->render('task/show.html.twig', [
-            'task' => $task,
-        ]);
+        return $this->json($this->taskService->create($request), Response::HTTP_CREATED);
     }
 
-    #[Route('/{id}/edit', name: 'app_task_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Task $task, EntityManagerInterface $entityManager): Response
+    #[Route('/{id}/status', name: 'api_task_update_status', requirements: ['id' => '\d+'], methods: ['PATCH'])]
+    public function updateStatus(Task $task, #[MapRequestPayload] UpdateTaskStatusRequest $request): JsonResponse
     {
-        $form = $this->createForm(TaskType::class, $task);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_task_index', [], Response::HTTP_SEE_OTHER);
-        }
-
-        return $this->render('task/edit.html.twig', [
-            'task' => $task,
-            'form' => $form,
-        ]);
-    }
-
-    #[Route('/{id}/status', name: 'app_task_status', methods: ['PATCH'])]
-    public function status(Request $request, Task $task, EntityManagerInterface $entityManager): Response
-    {
-        $task =
-        $entityManager->flush();
-
-        // return $this->redirectToRoute('app_task_index', [], Response::HTTP_SEE_OTHER);
-
-        return $this->render('task/edit.html.twig', [
-            'task' => $task,
-            'form' => $form,
-        ]);
-    }
-
-    #[Route('/{id}', name: 'app_task_delete', methods: ['POST'])]
-    public function delete(Request $request, Task $task, EntityManagerInterface $entityManager): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$task->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($task);
-            $entityManager->flush();
-        }
-
-        return $this->redirectToRoute('app_task_index', [], Response::HTTP_SEE_OTHER);
+        return $this->json($this->taskService->changeStatus($task, Status::from($request->status)));
     }
 }
