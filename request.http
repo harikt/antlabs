@@ -1,1 +1,88 @@
-curl -H https://localhost:8001/api/tasks
+@baseUrl = http://127.0.0.1:8000/api
+
+### List all tasks
+GET {{baseUrl}}/tasks
+Accept: application/json
+
+### List tasks filtered by status
+GET {{baseUrl}}/tasks?status=in_progress
+Accept: application/json
+
+### List tasks filtered by status and due_before (+ must be encoded as %2B)
+# status=todo&
+GET {{baseUrl}}/tasks?due_before=2026-12-11
+Accept: application/json
+
+### List tasks with invalid status -> 422
+GET {{baseUrl}}/tasks?status=foo
+Accept: application/json
+
+### List tasks with invalid due_before -> 422
+GET {{baseUrl}}/tasks?due_before=abc
+Accept: application/json
+
+### Create task -> 201
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Renew ASP licence",
+  "description": "Q1 batch",
+  "due_date": "2026-12-15T10:00:00+05:30"
+}
+
+### Create task with only title (status defaults to todo) -> 201
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Check hotspot uptime Test",
+  "due_date": "2026-12-02"
+}
+
+### Create task with invalid title, status and due_date -> 422
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "",
+  "status": "todo",
+  "due_date": "2020-01-01"
+}
+
+### Create task with empty body -> 422
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Accept: application/json
+
+@id = 5
+
+### Update status -> 200
+PATCH {{baseUrl}}/tasks/{{id}}/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "in_progress"
+}
+
+### Update status of missing task -> 404
+PATCH {{baseUrl}}/tasks/999999/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "done"
+}
+
+### Update status with invalid value -> 422
+PATCH {{baseUrl}}/tasks/1/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "foo"
+}

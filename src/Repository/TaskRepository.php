@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Task;
 use App\Enum\Status;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -20,32 +21,36 @@ class TaskRepository extends ServiceEntityRepository
    /**
     * @return Task[] Returns an array of Task objects
     */
-   public function findAllTasks(Status $status, ?string $due_before = null)
-   {
-       $query = $this->createQueryBuilder('t')
-           ->andWhere('t.status = :status')
-           ->setParameter('status', $status);
+    public function findAllTasks(
+        ?Status $status = null,
+        ?\DateTimeInterface $dueBefore = null,
+        int $page = 1,
+        int $limit = 20,
+    ): Paginator
+    {
+        $query = $this->createQueryBuilder('t');
 
-        if ($due_before) {
-            $query->andWhere('t.due_date < :due_date')
-                ->setParameter('due_date', $due_before);
+        if ($status) {
+            $query
+                ->andWhere('t.status = :status')
+                ->setParameter('status', $status);
         }
 
-        return $query->orderBy('t.due_date', 'ASC')
-           ->orderBy('t.created_at', 'DESC')
-           ->setMaxResults(10)
-           ->getQuery()
-           ->getResult()
-       ;
-   }
+        if ($dueBefore) {
+            $query
+                ->andWhere('t.dueDate < :dueDate')
+                ->setParameter('dueDate', $dueBefore);
+        }
 
-//    public function findOneBySomeField($value): ?Task
-//    {
-//        return $this->createQueryBuilder('t')
-//            ->andWhere('t.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+        $query
+            ->addOrderBy('t.dueDate', 'ASC')
+            ->addOrderBy('t.createdAt', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ;
+
+        return new Paginator($query->getQuery(), fetchJoinCollection: false);
+    }
+
 }

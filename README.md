@@ -1,43 +1,86 @@
-Build a mini API for Task Management.
-Requirements
-Create MySQL table tasks:
-id (PK, auto increment)
-title (varchar 150, required)
-description (text, nullable)
-status (enum/string: todo, in_progress, done; default todo)
-due_date (datetime, nullable)
-created_at (datetime, required)
-updated_at (datetime, required)
-Implement with Symfony + Doctrine:
-Entity + Migration
-Repository method(s) for filtering
-Endpoints:
-POST /api/tasks
-Input: title, description?, status?, due_date?
-Validate:
-title required, min 3 chars
-status must be one of allowed values
-due_date must be future datetime if provided
-Return 201 with created task JSON
-GET /api/tasks?status=&due_before=
-Filters optional
-Sort by due_date ASC, then created_at DESC
-Return list JSON
-PATCH /api/tasks/{id}/status
-Input: status
-Update only status + updated_at
-Return 200 updated object, 404 if not found, 422 invalid status
-Error handling
-Consistent JSON error format: { "errors": { "field": ["message"] } }
-Code quality expectations
-Thin controllers
-Use service layer for business logic
-Use DTO or request model for validation (bonus)
-No raw SQL in controllers
-Deliverables
-Source code
-Migration file
-Short README:
-setup steps
-run commands
-3 example curl requests
+# README
+
+## Requirements
+
+* PHP 8.4 +
+* Symfony CLI
+* MySql
+
+## Setup 
+
+Clone the repo, 
+
+```sh
+composer install
+```
+
+Create .env.local with DATABASE_URL for more infoamtion @see .env
+
+```sh
+bin/console doctrine:database:create
+bin/console doctrine:migrations:migrate
+```
+
+## Running Server
+
+```sh
+symfony server:start
+```
+
+Example shows symfony cli, but you can use nginx, or even php's built in server.
+
+## Creating a Task
+
+```sh
+curl -si -X POST "http://localhost:8000/api/tasks" -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"title":"Renew ASP licence","description":"Q1 batch","due_date":"2027-12-15"}'
+```
+
+## List Tasks
+
+```sh
+curl -si "http://localhost:8000/api/tasks"
+```
+
+```sh
+curl -si -G "http://localhost:8000/api/tasks" \
+--data-urlencode 'status=todo' \
+--data-urlencode 'due_before=2026-12-31'
+```
+
+## # Create task with invalid title and past due_date -> 422
+```sh
+curl -si -X POST "http://localhost:8000/api/tasks" -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"title":"ab","due_date":"2020-01-01"}'
+```
+
+# Update status
+
+```sh
+curl -si -X PATCH "http://localhost:8000/api/tasks/1/status" -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"status":"done"}'
+```
+
+## Using Rest Client
+
+`request.http` contains the routes which can be executed if [Rest Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) is installed
+
+
+## Tests
+
+Setup the test db
+
+```sh
+bin/console doctrine:database:create --env=test
+bin/console doctrine:migrations:migrate --env=test -n
+```
+
+## Run the unit tests
+
+```sh
+bin/phpunit
+```
+
+Note : 
+
+- Timezones: due_date is stored as given, without converting to UTC.

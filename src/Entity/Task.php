@@ -4,11 +4,13 @@ namespace App\Entity;
 
 use App\Enum\Status;
 use App\Repository\TaskRepository;
+use Symfony\Component\Clock\DatePoint;
 use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TaskRepository::class)]
+#[ORM\Table(name: 'tasks')]
 class Task
 {
     #[ORM\Id]
@@ -16,25 +18,32 @@ class Task
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    #[Assert\Length(min: 3,)]
-
+    #[ORM\Column(length: 150)]
+    #[Assert\NotBlank]
+    #[Assert\Length(min: 3, max: 150)]
     private ?string $title = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?\DateTime $due_date = null;
+    #[ORM\Column(enumType: Status::class, options: ['default' => 'todo'])]
+    private Status $status = Status::Todo;
 
-    #[ORM\Column(nullable: false)]
-    private ?\DateTimeImmutable $created_at = null;
+    #[ORM\Column(type: 'date_point', nullable: true)]
+    private ?DatePoint $dueDate = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $updated_at = null;
+    #[ORM\Column(type: 'date_point')]
+    private DatePoint $createdAt;
 
-    #[ORM\Column(enumType: Status::class)]
-    private ?Status $status = Status::Todo;
+    #[ORM\Column(type: 'date_point')]
+    private DatePoint $updatedAt;
+
+    public function __construct()
+    {
+        $now = new DatePoint();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
+    }
 
     public function getId(): ?int
     {
@@ -65,38 +74,38 @@ class Task
         return $this;
     }
 
-    public function getDueDate(): ?\DateTime
+    public function getDueDate(): ?DatePoint
     {
-        return $this->due_date;
+        return $this->dueDate;
     }
 
-    public function setDueDate(?\DateTime $due_date): static
+    public function setDueDate(?\DateTimeInterface $dueDate): static
     {
-        $this->due_date = $due_date;
+        $this->dueDate = $dueDate ? DatePoint::createFromInterface($dueDate) : null;
 
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): DatePoint
     {
-        return $this->created_at;
+        return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeImmutable $created_at): static
+    public function setCreatedAt(DatePoint $createdAt): static
     {
-        $this->created_at = $created_at;
+        $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): DatePoint
     {
-        return $this->updated_at;
+        return $this->updatedAt;
     }
 
-    public function setUpdatedAt(\DateTimeImmutable $updated_at): static
+    public function setUpdatedAt(DatePoint $updatedAt): static
     {
-        $this->updated_at = $updated_at;
+        $this->updatedAt = $updatedAt;
 
         return $this;
     }
