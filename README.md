@@ -48,13 +48,13 @@ curl -si -G "http://localhost:8000/api/tasks" \
 --data-urlencode 'due_before=2026-12-31'
 ```
 
-## # Create task with invalid title and past due_date -> 422
+## Create task with invalid title and past due_date -> 422
 ```sh
 curl -si -X POST "http://localhost:8000/api/tasks" -H 'Content-Type: application/json' -H 'Accept: application/json' \
   -d '{"title":"ab","due_date":"2020-01-01"}'
 ```
 
-# Update status
+## Update status
 
 ```sh
 curl -si -X PATCH "http://localhost:8000/api/tasks/1/status" -H 'Content-Type: application/json' -H 'Accept: application/json' \
